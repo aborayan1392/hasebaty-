@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0ea5e9" />
+<title>حاسبتي</title>
+<style> .install-wrap{display:flex;gap:8px;align-items:center;padding:8px 16px;background:#0b1220;color:#e2e8f0;border-bottom:1px solid rgba(148,163,184,.25)} #installBtn{background:#22c55e;color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer} #installBtn:disabled{opacity:.6;cursor:default} </style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>آلة حاسبة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .calculator-container {
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile browsers */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .display {
+            font-variant-numeric: tabular-nums;
+            word-break: break-all;
+        }
+
+        .btn {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .zero-menu {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            animation: slideUp 0.2s ease;
+        }
+
+        .zero-menu.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .dark-mode {
+                background-color: #181818;
+                color: white;
+            }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-white dark:bg-[#181818]">
+<div class="install-wrap" id="installBar" style="display:none">
+  <span>تثبيت التطبيق على جهازك</span>
+  <button id="installBtn">تثبيت</button>
+</div>
+
+    <div class="calculator-container bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black">
+        <!-- Display Area -->
+        <div class="flex-1 flex flex-col justify-end p-6 pb-4">
+            <div class="text-right">
+                <div id="expression" class="text-2xl md:text-3xl text-gray-500 dark:text-gray-400 mb-2 min-h-[2rem] display"></div>
+                <div id="display" class="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white min-h-[3.5rem] display">0</div>
+            </div>
+        </div>
+
+        <!-- Buttons Grid -->
+        <div class="p-4 pb-6">
+            <div class="grid grid-cols-4 gap-3" id="buttons">
+                <!-- Row 1 -->
+                <button class="btn bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-400 dark:hover:bg-gray-600" onclick="clearAll()">C</button>
+                <button class="btn bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-400 dark:hover:bg-gray-600" onclick="deleteLast()">⌫</button>
+                <button class="btn bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-400 dark:hover:bg-gray-600" onclick="showPercentageModal()">%</button>
+                <button class="btn bg-primary text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:opacity-90" onclick="appendOperator('÷')">÷</button>
+
+                <!-- Row 2 -->
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('7')">7</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('8')">8</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('9')">9</button>
+                <button class="btn bg-primary text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:opacity-90" onclick="appendOperator('×')">×</button>
+
+                <!-- Row 3 -->
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('4')">4</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('5')">5</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('6')">6</button>
+                <button class="btn bg-primary text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:opacity-90" onclick="appendOperator('-')">−</button>
+
+                <!-- Row 4 -->
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('1')">1</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('2')">2</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendNumber('3')">3</button>
+                <button class="btn bg-primary text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:opacity-90" onclick="appendOperator('+')">+</button>
+
+                <!-- Row 5 -->
+                <button class="btn bg-emerald-600 dark:bg-emerald-700 text-white rounded-2xl text-xl font-bold aspect-square flex items-center justify-center shadow-lg hover:bg-emerald-700 dark:hover:bg-emerald-600" onclick="calculateZakat()">زكاة</button>
+                <button id="zeroBtn" class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="showZeroMenu(event)">0</button>
+                <button class="btn bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-gray-300 dark:hover:bg-gray-700" onclick="appendDecimal()">.</button>
+                <button class="btn bg-green-500 text-white rounded-2xl text-2xl font-semibold aspect-square flex items-center justify-center shadow-lg hover:bg-green-600" onclick="calculate()">=</button>
+
+                <!-- Row 6: Health Calculators -->
+                <button class="btn col-span-2 bg-blue-500 dark:bg-blue-600 text-white rounded-2xl text-lg font-bold py-4 flex items-center justify-center shadow-lg hover:bg-blue-600 dark:hover:bg-blue-500" onclick="showCalorieModal()">🔥 حساب الكالوري</button>
+                <button class="btn col-span-2 bg-purple-500 dark:bg-purple-600 text-white rounded-2xl text-lg font-bold py-4 flex items-center justify-center shadow-lg hover:bg-purple-600 dark:hover:bg-purple-500" onclick="showBMIModal()">⚖️ كتلة الجسم</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay for zero menu -->
+    <div id="overlay" class="overlay" onclick="hideZeroMenu()"></div>
+
+    <!-- Zero Options Menu -->
+    <div id="zeroMenu" class="zero-menu bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-2 min-w-[120px]">
+        <button class="w-full text-center py-3 px-4 text-2xl font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition" onclick="selectZeroOption('0')">0</button>
+        <button class="w-full text-center py-3 px-4 text-2xl font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition" onclick="selectZeroOption('00')">00</button>
+        <button class="w-full text-center py-3 px-4 text-2xl font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition" onclick="selectZeroOption('000')">000</button>
+    </div>
+
+    <!-- Percentage Modal -->
+    <div id="percentageModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 mx-4 max-w-sm w-full">
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">حساب النسبة المئوية</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4 text-center">المبلغ الحالي: <span class="font-bold text-primary" id="currentAmount">0</span></p>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 dark:text-gray-300 mb-2 text-lg">أدخل النسبة المئوية:</label>
+                <input type="number" id="percentageInput" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition" placeholder="مثال: 15" min="0" max="100" step="0.01">
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mb-4">
+                <button class="py-2 px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" onclick="setPercentage(10)">10%</button>
+                <button class="py-2 px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" onclick="setPercentage(15)">15%</button>
+                <button class="py-2 px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" onclick="setPercentage(20)">20%</button>
+                <button class="py-2 px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" onclick="setPercentage(25)">25%</button>
+                <button class="py-2 px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" onclick="setPercentage(50)">50%</button>
+                <button class="py-2 px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" onclick="setPercentage(75)">75%</button>
+            </div>
+
+            <div class="flex gap-3">
+                <button class="flex-1 py-3 px-4 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl hover:bg-gray-400 dark:hover:bg-gray-600 transition font-semibold" onclick="hidePercentageModal()">إلغاء</button>
+                <button class="flex-1 py-3 px-4 bg-primary text-white rounded-xl hover:opacity-90 transition font-semibold" onclick="calculatePercentage()">حساب</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calorie Calculator Modal -->
+    <div id="calorieModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 mx-4 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">🔥 حساب السعرات الحرارية</h3>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">الجنس:</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="maleBtnCalorie" class="py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl hover:bg-primary hover:text-white transition font-semibold" onclick="selectGenderCalorie('male')">👨 ذكر</button>
+                        <button id="femaleBtnCalorie" class="py-3 px-4 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl hover:bg-primary hover:text-white transition font-semibold" onclick="selectGenderCalorie('female')">👩 أنثى</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">العمر (سنة):</label>
+                    <input type="number" id="ageInput" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition" placeholder="مثال: 25" min="1" max="120">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">الوزن (كجم):</label>
+                    <input type="number" id="weightInputCalorie" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition" placeholder="مثال: 70" min="1" step="0.1">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">الطول (سم):</label>
+                    <input type="number" id="heightInputCalorie" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition" placeholder="مثال: 170" min="1" max="300">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">مستوى النشاط:</label>
+                    <select id="activityLevel" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition">
+                        <option value="1.2">قليل الحركة (لا رياضة)</option>
+                        <option value="1.375">نشاط خفيف (1-3 أيام/أسبوع)</option>
+                        <option value="1.55" selected>نشاط متوسط (3-5 أيام/أسبوع)</option>
+                        <option value="1.725">نشاط عالي (6-7 أيام/أسبوع)</option>
+                        <option value="1.9">نشاط شديد (رياضي محترف)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="calorieResult" class="hidden mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                <p class="text-center text-gray-700 dark:text-gray-300 mb-2">السعرات الحرارية اليومية:</p>
+                <p class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400" id="calorieValue">0</p>
+                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-1">سعرة حرارية/يوم</p>
+            </div>
+
+            <div class="flex gap-3">
+                <button class="flex-1 py-3 px-4 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl hover:bg-gray-400 dark:hover:bg-gray-600 transition font-semibold" onclick="hideCalorieModal()">إلغاء</button>
+                <button class="flex-1 py-3 px-4 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition font-semibold" onclick="calculateCalories()">حساب</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BMI Calculator Modal -->
+    <div id="bmiModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 mx-4 max-w-md w-full">
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">⚖️ حساب كتلة الجسم (BMI)</h3>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">الوزن (كجم):</label>
+                    <input type="number" id="weightInputBMI" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition" placeholder="مثال: 70" min="1" step="0.1">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">الطول (سم):</label>
+                    <input type="number" id="heightInputBMI" class="w-full px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-primary transition" placeholder="مثال: 170" min="1" max="300">
+                </div>
+            </div>
+
+            <div id="bmiResult" class="hidden mb-4 p-4 rounded-xl">
+                <p class="text-center text-gray-700 dark:text-gray-300 mb-2">مؤشر كتلة الجسم:</p>
+                <p class="text-3xl font-bold text-center" id="bmiValue">0</p>
+                <p class="text-center text-lg font-semibold mt-2" id="bmiCategory">-</p>
+                <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                    <p class="text-center font-semibold mb-2">التصنيفات:</p>
+                    <p>• نقص الوزن: أقل من 18.5</p>
+                    <p>• وزن طبيعي: 18.5 - 24.9</p>
+                    <p>• زيادة في الوزن: 25 - 29.9</p>
+                    <p>• سمنة: 30 أو أكثر</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button class="flex-1 py-3 px-4 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl hover:bg-gray-400 dark:hover:bg-gray-600 transition font-semibold" onclick="hideBMIModal()">إلغاء</button>
+                <button class="flex-1 py-3 px-4 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition font-semibold" onclick="calculateBMI()">حساب</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        let currentExpression = '';
+        let currentValue = '0';
+        let lastResult = null;
+        let shouldResetDisplay = false;
+
+        const displayElement = document.getElementById('display');
+        const expressionElement = document.getElementById('expression');
+
+        function updateDisplay() {
+            displayElement.textContent = currentValue;
+            expressionElement.textContent = currentExpression;
+        }
+
+        function appendNumber(num) {
+            if (shouldResetDisplay) {
+                currentValue = num;
+                shouldResetDisplay = false;
+            } else {
+                if (currentValue === '0' && num !== '.') {
+                    currentValue = num;
+                } else {
+                    currentValue += num;
+                }
+            }
+            updateDisplay();
+        }
+
+        function appendDecimal() {
+            if (shouldResetDisplay) {
+                currentValue = '0.';
+                shouldResetDisplay = false;
+            } else if (!currentValue.includes('.')) {
+                currentValue += '.';
+            }
+            updateDisplay();
+        }
+
+        function appendOperator(operator) {
+            if (currentExpression && !shouldResetDisplay) {
+                calculate();
+            }
+            currentExpression = currentValue + ' ' + operator;
+            shouldResetDisplay = true;
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentValue = '0';
+            currentExpression = '';
+            lastResult = null;
+            shouldResetDisplay = false;
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (currentValue.length > 1) {
+                currentValue = currentValue.slice(0, -1);
+            } else {
+                currentValue = '0';
+            }
+            updateDisplay();
+        }
+
+        function toggleSign() {
+            if (currentValue !== '0') {
+                if (currentValue.startsWith('-')) {
+                    currentValue = currentValue.substring(1);
+                } else {
+                    currentValue = '-' + currentValue;
+                }
+                updateDisplay();
+            }
+        }
+
+        function calculateZakat() {
+            // حساب الزكاة 2.5% من المبلغ
+            const amount = parseFloat(currentValue);
+            if (isNaN(amount) || amount <= 0) {
+                currentExpression = 'أدخل مبلغ صحيح';
+                currentValue = '0';
+                shouldResetDisplay = true;
+                updateDisplay();
+                return;
+            }
+
+            const zakat = amount * 0.025; // 2.5%
+            const zakatRounded = Math.round(zakat * 100) / 100;
+
+            currentExpression = `زكاة ${amount} =`;
+            currentValue = zakatRounded.toString();
+            shouldResetDisplay = true;
+            updateDisplay();
+        }
+
+        function calculate() {
+            if (!currentExpression) return;
+
+            const parts = currentExpression.split(' ');
+            if (parts.length < 2) return;
+
+            const num1 = parseFloat(parts[0]);
+            const operator = parts[1];
+            const num2 = parseFloat(currentValue);
+
+            let result;
+
+            switch (operator) {
+                case '+':
+                    result = num1 + num2;
+                    break;
+                case '−':
+                case '-':
+                    result = num1 - num2;
+                    break;
+                case '×':
+                case '*':
+                    result = num1 * num2;
+                    break;
+                case '÷':
+                case '/':
+                    if (num2 === 0) {
+                        currentValue = 'خطأ';
+                        currentExpression = '';
+                        shouldResetDisplay = true;
+                        updateDisplay();
+                        return;
+                    }
+                    result = num1 / num2;
+                    break;
+                case '%':
+                    result = num1 % num2;
+                    break;
+                default:
+                    return;
+            }
+
+            // Round to avoid floating point errors
+            result = Math.round(result * 100000000) / 100000000;
+
+            currentValue = result.toString();
+            currentExpression = '';
+            shouldResetDisplay = true;
+            lastResult = result;
+            updateDisplay();
+        }
+
+        // Percentage modal functions
+        function showPercentageModal() {
+            const amount = parseFloat(currentValue);
+            if (isNaN(amount) || amount === 0) {
+                currentExpression = 'أدخل مبلغ أولاً';
+                updateDisplay();
+                setTimeout(() => {
+                    currentExpression = '';
+                    updateDisplay();
+                }, 2000);
+                return;
+            }
+
+            const modal = document.getElementById('percentageModal');
+            const currentAmountElement = document.getElementById('currentAmount');
+            const percentageInput = document.getElementById('percentageInput');
+
+            currentAmountElement.textContent = amount;
+            percentageInput.value = '';
+            percentageInput.focus();
+
+            modal.classList.add('active');
+        }
+
+        function hidePercentageModal() {
+            const modal = document.getElementById('percentageModal');
+            modal.classList.remove('active');
+        }
+
+        function setPercentage(percentage) {
+            const percentageInput = document.getElementById('percentageInput');
+            percentageInput.value = percentage;
+        }
+
+        function calculatePercentage() {
+            const amount = parseFloat(currentValue);
+            const percentageInput = document.getElementById('percentageInput');
+            const percentage = parseFloat(percentageInput.value);
+
+            if (isNaN(percentage) || percentage < 0) {
+                percentageInput.classList.add('border-red-500');
+                setTimeout(() => {
+                    percentageInput.classList.remove('border-red-500');
+                }, 1000);
+                return;
+            }
+
+            const result = (amount * percentage) / 100;
+            const resultRounded = Math.round(result * 100) / 100;
+
+            currentExpression = `${percentage}% من ${amount} =`;
+            currentValue = resultRounded.toString();
+            shouldResetDisplay = true;
+
+            hidePercentageModal();
+            updateDisplay();
+        }
+
+        // Handle Enter key in percentage input
+        document.addEventListener('DOMContentLoaded', () => {
+            const percentageInput = document.getElementById('percentageInput');
+            if (percentageInput) {
+                percentageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        calculatePercentage();
+                    }
+                });
+            }
+        });
+
+        // Calorie Calculator Functions
+        let selectedGender = 'male';
+
+        function showCalorieModal() {
+            const modal = document.getElementById('calorieModal');
+            document.getElementById('calorieResult').classList.add('hidden');
+            modal.classList.add('active');
+        }
+
+        function hideCalorieModal() {
+            const modal = document.getElementById('calorieModal');
+            modal.classList.remove('active');
+        }
+
+        function selectGenderCalorie(gender) {
+            selectedGender = gender;
+            const maleBtn = document.getElementById('maleBtnCalorie');
+            const femaleBtn = document.getElementById('femaleBtnCalorie');
+
+            if (gender === 'male') {
+                maleBtn.classList.add('bg-primary', 'text-white');
+                maleBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-900', 'dark:text-white');
+                femaleBtn.classList.remove('bg-primary', 'text-white');
+                femaleBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-900', 'dark:text-white');
+            } else {
+                femaleBtn.classList.add('bg-primary', 'text-white');
+                femaleBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-900', 'dark:text-white');
+                maleBtn.classList.remove('bg-primary', 'text-white');
+                maleBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-900', 'dark:text-white');
+            }
+        }
+
+        function calculateCalories() {
+            const age = parseFloat(document.getElementById('ageInput').value);
+            const weight = parseFloat(document.getElementById('weightInputCalorie').value);
+            const height = parseFloat(document.getElementById('heightInputCalorie').value);
+            const activityLevel = parseFloat(document.getElementById('activityLevel').value);
+
+            if (isNaN(age) || isNaN(weight) || isNaN(height) || age <= 0 || weight <= 0 || height <= 0) {
+                return;
+            }
+
+            // Mifflin-St Jeor Equation
+            let bmr;
+            if (selectedGender === 'male') {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+            } else {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+            }
+
+            const tdee = Math.round(bmr * activityLevel);
+
+            document.getElementById('calorieValue').textContent = tdee;
+            document.getElementById('calorieResult').classList.remove('hidden');
+        }
+
+        // BMI Calculator Functions
+        function showBMIModal() {
+            const modal = document.getElementById('bmiModal');
+            document.getElementById('bmiResult').classList.add('hidden');
+            modal.classList.add('active');
+        }
+
+        function hideBMIModal() {
+            const modal = document.getElementById('bmiModal');
+            modal.classList.remove('active');
+        }
+
+        function calculateBMI() {
+            const weight = parseFloat(document.getElementById('weightInputBMI').value);
+            const heightCm = parseFloat(document.getElementById('heightInputBMI').value);
+
+            if (isNaN(weight) || isNaN(heightCm) || weight <= 0 || heightCm <= 0) {
+                return;
+            }
+
+            const heightM = heightCm / 100;
+            const bmi = weight / (heightM * heightM);
+            const bmiRounded = Math.round(bmi * 10) / 10;
+
+            let category, categoryColor, bgColor;
+            if (bmi < 18.5) {
+                category = 'نقص في الوزن';
+                categoryColor = 'text-blue-600 dark:text-blue-400';
+                bgColor = 'bg-blue-50 dark:bg-blue-900/30';
+            } else if (bmi < 25) {
+                category = 'وزن طبيعي ✓';
+                categoryColor = 'text-green-600 dark:text-green-400';
+                bgColor = 'bg-green-50 dark:bg-green-900/30';
+            } else if (bmi < 30) {
+                category = 'زيادة في الوزن';
+                categoryColor = 'text-orange-600 dark:text-orange-400';
+                bgColor = 'bg-orange-50 dark:bg-orange-900/30';
+            } else {
+                category = 'سمنة';
+                categoryColor = 'text-red-600 dark:text-red-400';
+                bgColor = 'bg-red-50 dark:bg-red-900/30';
+            }
+
+            const bmiResultDiv = document.getElementById('bmiResult');
+            bmiResultDiv.className = `mb-4 p-4 rounded-xl ${bgColor}`;
+            document.getElementById('bmiValue').textContent = bmiRounded;
+            document.getElementById('bmiValue').className = `text-3xl font-bold text-center ${categoryColor}`;
+            document.getElementById('bmiCategory').textContent = category;
+            document.getElementById('bmiCategory').className = `text-center text-lg font-semibold mt-2 ${categoryColor}`;
+            bmiResultDiv.classList.remove('hidden');
+        }
+
+        // Zero menu functions
+        function showZeroMenu(event) {
+            event.stopPropagation();
+            const zeroBtn = document.getElementById('zeroBtn');
+            const zeroMenu = document.getElementById('zeroMenu');
+            const overlay = document.getElementById('overlay');
+
+            // Get button position
+            const rect = zeroBtn.getBoundingClientRect();
+
+            // Position menu above the button
+            zeroMenu.style.bottom = (window.innerHeight - rect.top + 10) + 'px';
+            zeroMenu.style.left = rect.left + 'px';
+
+            // Show menu and overlay
+            zeroMenu.classList.add('active');
+            overlay.classList.add('active');
+        }
+
+        function hideZeroMenu() {
+            const zeroMenu = document.getElementById('zeroMenu');
+            const overlay = document.getElementById('overlay');
+
+            zeroMenu.classList.remove('active');
+            overlay.classList.remove('active');
+        }
+
+        function selectZeroOption(value) {
+            if (shouldResetDisplay) {
+                currentValue = value;
+                shouldResetDisplay = false;
+            } else {
+                if (currentValue === '0') {
+                    currentValue = value;
+                } else {
+                    currentValue += value;
+                }
+            }
+            updateDisplay();
+            hideZeroMenu();
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            e.preventDefault();
+
+            if (e.key >= '0' && e.key <= '9') {
+                appendNumber(e.key);
+            } else if (e.key === '.') {
+                appendDecimal();
+            } else if (e.key === '+') {
+                appendOperator('+');
+            } else if (e.key === '-') {
+                appendOperator('−');
+            } else if (e.key === '*') {
+                appendOperator('×');
+            } else if (e.key === '/') {
+                appendOperator('÷');
+            } else if (e.key === '%') {
+                appendOperator('%');
+            } else if (e.key === 'Enter' || e.key === '=') {
+                calculate();
+            } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+                clearAll();
+            } else if (e.key === 'Backspace') {
+                deleteLast();
+            }
+        });
+
+        updateDisplay();
+    </script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(console.error);
+  });
+}
+let deferredPrompt = null;
+const installBar = document.getElementById('installBar');
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBar) installBar.style.display = 'flex';
+});
+if (installBtn) installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  installBtn.disabled = true;
+  await deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  if (installBar) installBar.style.display = 'none';
+});
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  if (installBar) installBar.style.display = 'none';
+});
+</script>
+</body>
+</html>
