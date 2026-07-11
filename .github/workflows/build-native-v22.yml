@@ -1,0 +1,145 @@
+name: Build Native Java v2.2
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restore original native project
+        run: |
+          find native-payload -maxdepth 1 -type f \( -name 'head-*' -o -name 'rest-*' \) -print0 | sort -z | xargs -0 cat > native-payload-combined.b64
+          test "$(wc -c < native-payload-combined.b64)" -eq 29108
+          base64 --decode native-payload-combined.b64 > native-project.tar.gz
+          gzip -t native-project.tar.gz
+          tar -xzf native-project.tar.gz
+
+      - name: Apply stable system bars and launcher icon
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('AlHasibat-Native-Java')
+          p = root / 'app/src/main/java/com/aborayan/alhasibat/MainActivity.java'
+          s = p.read_text(encoding='utf-8')
+          if 'import android.os.Build;' not in s:
+              s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n')
+          s = s.replace('import android.view.WindowInsetsController;\n', '')
+          start = s.index('    private void configureSystemBars() {')
+          end = s.index('    private void buildRoot() {', start)
+          replacement = '''    @SuppressWarnings("deprecation")
+              private void configureSystemBars() {
+                  Window w = getWindow();
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                      w.setDecorFitsSystemWindows(true);
+                  }
+                  int flags = 0;
+                  if (light && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                  }
+                  if (light && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                  }
+                  w.getDecorView().setSystemUiVisibility(flags);
+                  w.setStatusBarColor(ribbon);
+                  w.setNavigationBarColor(bg);
+              }
+
+          '''
+          s = s[:start] + replacement + s[end:]
+          s = re.sub(r'\n\s*@SuppressWarnings\("deprecation"\)\n\s*private void applySafeSystemInsets\(View target\) \{.*?\n\s*\}\n', '\n', s, flags=re.S)
+          s = s.replace('\n        applySafeSystemInsets(root);', '')
+          p.write_text(s, encoding='utf-8')
+
+          g = root / 'app/build.gradle'
+          t = g.read_text(encoding='utf-8')
+          t = re.sub(r'targetSdk\s+\d+', 'targetSdk 34', t)
+          t = re.sub(r'versionCode\s+\d+', 'versionCode 4', t)
+          t = re.sub(r"versionName\s+'[^']+'", "versionName '2.2-native-stable-bars'", t)
+          g.write_text(t, encoding='utf-8')
+
+          manifest = root / 'app/src/main/AndroidManifest.xml'
+          m = manifest.read_text(encoding='utf-8')
+          m = m.replace('android:icon="@drawable/ic_launcher"', 'android:icon="@mipmap/ic_launcher"')
+          if 'android:roundIcon=' not in m:
+              m = m.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/ic_launcher"\n        android:roundIcon="@mipmap/ic_launcher_round"')
+          manifest.write_text(m, encoding='utf-8')
+          PY
+
+          mkdir -p AlHasibat-Native-Java/app/src/main/res/mipmap
+          mkdir -p AlHasibat-Native-Java/app/src/main/res/mipmap-anydpi-v26
+          mkdir -p AlHasibat-Native-Java/app/src/main/res/drawable
+
+          cat > AlHasibat-Native-Java/app/src/main/res/drawable/ic_launcher_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#FFFFFF" android:pathData="M29,18h50c6.6,0 12,5.4 12,12v48c0,6.6 -5.4,12 -12,12h-50c-6.6,0 -12,-5.4 -12,-12v-48c0,-6.6 5.4,-12 12,-12z"/>
+              <path android:fillColor="#DFF4E8" android:pathData="M27,28h54v17h-54z"/>
+              <path android:fillColor="#0B6B3A" android:pathData="M34,34h40v5h-40z"/>
+              <path android:fillColor="#198754" android:pathData="M27,52h13v11h-13zM47,52h13v11h-13zM67,52h14v11h-14zM27,69h13v11h-13zM47,69h13v11h-13z"/>
+              <path android:fillColor="#F2B134" android:pathData="M67,69h14v11h-14z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M72,71.5h4v6h-4zM69,74h10v2h-10z"/>
+          </vector>
+          EOF
+
+          cat > AlHasibat-Native-Java/app/src/main/res/drawable/ic_launcher_legacy.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#0B6B3A" android:pathData="M0,0h108v108h-108z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M29,18h50c6.6,0 12,5.4 12,12v48c0,6.6 -5.4,12 -12,12h-50c-6.6,0 -12,-5.4 -12,-12v-48c0,-6.6 5.4,-12 12,-12z"/>
+              <path android:fillColor="#DFF4E8" android:pathData="M27,28h54v17h-54z"/>
+              <path android:fillColor="#0B6B3A" android:pathData="M34,34h40v5h-40z"/>
+              <path android:fillColor="#198754" android:pathData="M27,52h13v11h-13zM47,52h13v11h-13zM67,52h14v11h-14zM27,69h13v11h-13zM47,69h13v11h-13z"/>
+              <path android:fillColor="#F2B134" android:pathData="M67,69h14v11h-14z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M72,71.5h4v6h-4zM69,74h10v2h-10z"/>
+          </vector>
+          EOF
+
+          cp AlHasibat-Native-Java/app/src/main/res/drawable/ic_launcher_legacy.xml AlHasibat-Native-Java/app/src/main/res/mipmap/ic_launcher.xml
+          cp AlHasibat-Native-Java/app/src/main/res/drawable/ic_launcher_legacy.xml AlHasibat-Native-Java/app/src/main/res/mipmap/ic_launcher_round.xml
+
+          cat > AlHasibat-Native-Java/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@android:color/holo_green_dark" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+          EOF
+          cp AlHasibat-Native-Java/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml AlHasibat-Native-Java/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+      - name: Verify stable native build
+        run: |
+          test -z "$(find AlHasibat-Native-Java -iname '*.html' -print -quit)"
+          ! grep -R "WebView\|android.webkit\|applySafeSystemInsets\|WindowInsetsController" AlHasibat-Native-Java/app/src/main
+          grep -q "setDecorFitsSystemWindows(true)" AlHasibat-Native-Java/app/src/main/java/com/aborayan/alhasibat/MainActivity.java
+          grep -q "@mipmap/ic_launcher" AlHasibat-Native-Java/app/src/main/AndroidManifest.xml
+          test -f AlHasibat-Native-Java/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+
+      - name: Build APK
+        run: gradle -p AlHasibat-Native-Java --no-daemon :app:assembleDebug
+
+      - name: Package result
+        run: cp AlHasibat-Native-Java/app/build/outputs/apk/debug/app-debug.apk AlHasibat-Native-Java/app/build/outputs/apk/debug/AlHasibat-Native-Java-v2.2.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AlHasibat-Native-Java-v2.2-APK
+          path: AlHasibat-Native-Java/app/build/outputs/apk/debug/AlHasibat-Native-Java-v2.2.apk
+          if-no-files-found: error
+          retention-days: 30
