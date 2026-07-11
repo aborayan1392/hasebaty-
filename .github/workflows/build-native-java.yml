@@ -33,28 +33,19 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Assemble payload diagnostics
+      - name: Assemble native project payload
         run: |
-          cat native-payload/part00 native-payload/part01 \
-              native-payload/rest-aa native-payload/rest-ab \
-              native-payload/rest-ac native-payload/rest-ad \
-              native-payload/rest-ae > native-payload-combined.b64
-          wc -c native-payload-combined.b64 > native-payload-size.txt
-          sha256sum native-payload-combined.b64 > native-payload-sha.txt
-
-      - name: Upload payload diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: Native-Payload-Diagnostics
-          path: |
-            native-payload-combined.b64
-            native-payload-size.txt
-            native-payload-sha.txt
-          retention-days: 1
+          find native-payload -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+          find native-payload -maxdepth 1 -type f \( -name 'part*' -o -name 'rest-*' \) -print0 \
+            | sort -z \
+            | xargs -0 cat > native-payload-combined.b64
+          test "$(wc -c < native-payload-combined.b64)" -eq 29108
+          test "$(sha256sum native-payload-combined.b64 | cut -d' ' -f1)" = "239f80a0a953450c57b7c45a47aad7319060403ad903f54ddcd48ce9a25902f6"
 
       - name: Restore native Java project
         run: |
           base64 --decode native-payload-combined.b64 > native-project-fixed.tar.gz
+          test "$(sha256sum native-project-fixed.tar.gz | cut -d' ' -f1)" = "d9830c86d8de65e2567c74a1d65fd5408cfcfd6ac7892add1a5fec985a916e2c"
           gzip -t native-project-fixed.tar.gz
           tar -xzf native-project-fixed.tar.gz
 
