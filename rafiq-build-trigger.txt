@@ -1,0 +1,1 @@
+Trigger native Android build after workflow installation.
