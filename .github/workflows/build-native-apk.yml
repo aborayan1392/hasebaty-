@@ -3,6 +3,8 @@ name: Build Native Java APK
 on:
   push:
     branches: [android-native-java]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -39,7 +41,7 @@ jobs:
       - name: Verify no HTML or WebView
         run: |
           ! find AlHasibat-Native-Java -iname '*.html' | grep .
-          ! grep -R "WebView\|android.webkit" AlHasibat-Native-Java/app/src/main || true
+          ! grep -R "WebView\|android.webkit" AlHasibat-Native-Java/app/src/main
           test ! -d AlHasibat-Native-Java/app/src/main/assets
 
       - name: Build native APK
