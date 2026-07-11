@@ -34,7 +34,20 @@ jobs:
           gradle-version: '8.9'
 
       - name: Extract native Java project
-        run: tar -xzf native-project.tar.gz
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, tarfile
+          p=Path('native-project.tar.gz')
+          data=p.read_bytes()
+          print('archive bytes:', len(data), 'magic:', data[:8].hex())
+          if not data.startswith(b'\x1f\x8b'):
+              data=base64.b64decode(data)
+              p.write_bytes(data)
+              print('decoded bytes:', len(data), 'magic:', data[:8].hex())
+          with tarfile.open(p, 'r:gz') as t:
+              t.extractall('.')
+          PY
 
       - name: Verify native-only sources
         run: |
