@@ -33,21 +33,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract native Java project
+      - name: Restore native Java project
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64, tarfile
-          p=Path('native-project.tar.gz')
-          data=p.read_bytes()
-          print('archive bytes:', len(data), 'magic:', data[:8].hex())
-          if not data.startswith(b'\x1f\x8b'):
-              data=base64.b64decode(data)
-              p.write_bytes(data)
-              print('decoded bytes:', len(data), 'magic:', data[:8].hex())
-          with tarfile.open(p, 'r:gz') as t:
-              t.extractall('.')
-          PY
+          cat native-payload/part00 native-payload/part01 \
+              native-payload/rest-aa native-payload/rest-ab \
+              native-payload/rest-ac native-payload/rest-ad \
+              native-payload/rest-ae \
+            | base64 --decode > native-project-fixed.tar.gz
+          gzip -t native-project-fixed.tar.gz
+          tar -xzf native-project-fixed.tar.gz
 
       - name: Verify native-only sources
         run: |
