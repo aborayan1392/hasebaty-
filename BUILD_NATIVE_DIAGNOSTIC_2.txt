@@ -1,0 +1,1 @@
+Upload payload diagnostics before final native build.
