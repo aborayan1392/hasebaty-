@@ -38,7 +38,18 @@ jobs:
           test -f RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           grep -q "journeyapps" RafiqShoppingNative/app/build.gradle
       - name: Build APK
-        run: gradle -p RafiqShoppingNative --no-daemon :app:assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle -p RafiqShoppingNative --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee rafiq-build.log
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rafiq-Shopping-Build-Log
+          path: rafiq-build.log
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Package APK
         run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.0.apk
       - uses: actions/upload-artifact@v4
