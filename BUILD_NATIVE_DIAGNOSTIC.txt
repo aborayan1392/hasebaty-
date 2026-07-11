@@ -1,0 +1,1 @@
+Run payload integrity diagnostics and native build.
