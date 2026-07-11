@@ -34,17 +34,88 @@ jobs:
           test "$(sha256sum native-project-fixed.tar.gz | cut -d' ' -f1)" = "d9830c86d8de65e2567c74a1d65fd5408cfcfd6ac7892add1a5fec985a916e2c"
           gzip -t native-project-fixed.tar.gz
           tar -xzf native-project-fixed.tar.gz
+      - name: Apply safe system insets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('AlHasibat-Native-Java/app/src/main/java/com/aborayan/alhasibat/MainActivity.java')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n')
+          s = s.replace('import android.view.Window;\n', 'import android.view.Window;\nimport android.view.WindowInsetsController;\n')
+          old = '''    private void configureSystemBars() {
+              Window w = getWindow();
+              w.setStatusBarColor(ribbon);
+              w.setNavigationBarColor(bg);
+              if (light) w.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+              else w.getDecorView().setSystemUiVisibility(0);
+          }
+          '''
+          new = '''    private void configureSystemBars() {
+              Window w = getWindow();
+              w.setStatusBarColor(ribbon);
+              w.setNavigationBarColor(bg);
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                  w.setDecorFitsSystemWindows(false);
+                  WindowInsetsController controller = w.getInsetsController();
+                  if (controller != null) {
+                      int mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                              | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                      controller.setSystemBarsAppearance(light ? mask : 0, mask);
+                  }
+              } else {
+                  int flags = 0;
+                  if (light && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                  if (light && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                  w.getDecorView().setSystemUiVisibility(flags);
+              }
+          }
+
+          @SuppressWarnings("deprecation")
+          private void applySafeSystemInsets(View target) {
+              target.setOnApplyWindowInsetsListener((view, insets) -> {
+                  view.setPadding(
+                          insets.getSystemWindowInsetLeft(),
+                          insets.getSystemWindowInsetTop(),
+                          insets.getSystemWindowInsetRight(),
+                          insets.getSystemWindowInsetBottom());
+                  return insets;
+              });
+              target.requestApplyInsets();
+          }
+          '''
+          if old not in s:
+              raise SystemExit('configureSystemBars block not found')
+          s = s.replace(old, new)
+          old2 = '''        root.addView(drawer, dlp);
+              setContentView(root);
+          }
+          '''
+          new2 = '''        root.addView(drawer, dlp);
+              setContentView(root);
+              applySafeSystemInsets(root);
+          }
+          '''
+          if old2 not in s:
+              raise SystemExit('buildRoot end not found')
+          s = s.replace(old2, new2)
+          p.write_text(s, encoding='utf-8')
+
+          g = Path('AlHasibat-Native-Java/app/build.gradle')
+          t = g.read_text(encoding='utf-8').replace('versionCode 2', 'versionCode 3').replace("versionName '2.0-native'", "versionName '2.1-native-insets'")
+          g.write_text(t, encoding='utf-8')
+          PY
       - name: Verify native only
         run: |
           test ! -d AlHasibat-Native-Java/app/src/main/assets
           test -z "$(find AlHasibat-Native-Java -iname '*.html' -print -quit)"
           ! grep -R "WebView\|android.webkit" AlHasibat-Native-Java/app/src/main
+          grep -q "applySafeSystemInsets(root)" AlHasibat-Native-Java/app/src/main/java/com/aborayan/alhasibat/MainActivity.java
       - name: Build APK
         run: gradle -p AlHasibat-Native-Java --no-daemon :app:assembleDebug
-      - run: cp AlHasibat-Native-Java/app/build/outputs/apk/debug/app-debug.apk AlHasibat-Native-Java/app/build/outputs/apk/debug/AlHasibat-Native-Java-v2.apk
+      - run: cp AlHasibat-Native-Java/app/build/outputs/apk/debug/app-debug.apk AlHasibat-Native-Java/app/build/outputs/apk/debug/AlHasibat-Native-Java-v2.1.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AlHasibat-Native-Java-APK
-          path: AlHasibat-Native-Java/app/build/outputs/apk/debug/AlHasibat-Native-Java-v2.apk
+          name: AlHasibat-Native-Java-v2.1-APK
+          path: AlHasibat-Native-Java/app/build/outputs/apk/debug/AlHasibat-Native-Java-v2.1.apk
           if-no-files-found: error
           retention-days: 30
