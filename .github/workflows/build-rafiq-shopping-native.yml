@@ -30,6 +30,21 @@ jobs:
           base64 --decode /tmp/rafiq.b64 > /tmp/RafiqShoppingNative.tar.gz
           echo "b0ac0c46fe3ade70741ef07b52f877a8bcd45a61cea66d59d9793a7a34e5bb67  /tmp/RafiqShoppingNative.tar.gz" | sha256sum -c -
           tar -xzf /tmp/RafiqShoppingNative.tar.gz
+      - name: Install custom launcher icon
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick
+          base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-icon.png
+          RES=RafiqShoppingNative/app/src/main/res
+          mkdir -p "$RES/drawable-nodpi"
+          cp /tmp/rafiq-icon.png "$RES/drawable-nodpi/ic_launcher_basket_foreground.png"
+          for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            dpi="${pair%%:*}"; size="${pair##*:}"
+            mkdir -p "$RES/mipmap-$dpi"
+            convert -size ${size}x${size} xc:black /tmp/rafiq-icon.png -resize $((size*78/100))x$((size*78/100)) -gravity center -composite "$RES/mipmap-$dpi/ic_launcher.png"
+            cp "$RES/mipmap-$dpi/ic_launcher.png" "$RES/mipmap-$dpi/ic_launcher_round.png"
+          done
+          sed -i "s/versionCode 1/versionCode 2/; s/versionName '1.0-native'/versionName '1.1-native-custom-icon'/" RafiqShoppingNative/app/build.gradle
       - name: Align scanner dependencies
         run: |
           cat >> RafiqShoppingNative/app/build.gradle <<'GRADLE'
@@ -46,6 +61,7 @@ jobs:
           ! grep -R "WebView\|android.webkit" RafiqShoppingNative/app/src/main
           test -f RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           test -f RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          test -s RafiqShoppingNative/app/src/main/res/drawable-nodpi/ic_launcher_basket_foreground.png
           grep -q "journeyapps" RafiqShoppingNative/app/build.gradle
       - name: Build APK
         shell: bash
@@ -56,15 +72,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Rafiq-Shopping-Build-Log
+          name: Rafiq-Shopping-Build-Log-v1.1
           path: rafiq-build.log
           if-no-files-found: ignore
           retention-days: 3
       - name: Package APK
-        run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.0.apk
+        run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.1-Custom-Icon.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Rafiq-Shopping-Native-Java-APK
-          path: Rafiq-Shopping-Native-Java-v1.0.apk
+          name: Rafiq-Shopping-Native-Java-v1.1-APK
+          path: Rafiq-Shopping-Native-Java-v1.1-Custom-Icon.apk
           if-no-files-found: error
           retention-days: 30
