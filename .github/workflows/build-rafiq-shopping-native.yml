@@ -24,24 +24,65 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Restore native Java project
         run: |
           cat rafiq-payload/part* | tr -d '\n\r' > /tmp/rafiq.b64
           base64 --decode /tmp/rafiq.b64 > /tmp/RafiqShoppingNative.tar.gz
           echo "b0ac0c46fe3ade70741ef07b52f877a8bcd45a61cea66d59d9793a7a34e5bb67  /tmp/RafiqShoppingNative.tar.gz" | sha256sum -c -
           tar -xzf /tmp/RafiqShoppingNative.tar.gz
-      - name: Install custom launcher icon
+
+      - name: Install definitive launcher icon v1.2
         run: |
-          base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-icon.png
+          base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-basket.png
           RES=RafiqShoppingNative/app/src/main/res
-          mkdir -p "$RES/drawable-nodpi"
-          cp /tmp/rafiq-icon.png "$RES/drawable-nodpi/ic_launcher_basket_foreground.png"
+          mkdir -p "$RES/drawable-nodpi" "$RES/mipmap-anydpi-v26" "$RES/mipmap-anydpi"
+          cp /tmp/rafiq-basket.png "$RES/drawable-nodpi/ic_rafiq_basket_foreground.png"
           for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             mkdir -p "$RES/mipmap-$dpi"
-            cp /tmp/rafiq-icon.png "$RES/mipmap-$dpi/ic_launcher.png"
-            cp /tmp/rafiq-icon.png "$RES/mipmap-$dpi/ic_launcher_round.png"
+            cp /tmp/rafiq-basket.png "$RES/mipmap-$dpi/ic_rafiq_basket.png"
+            cp /tmp/rafiq-basket.png "$RES/mipmap-$dpi/ic_rafiq_basket_round.png"
           done
-          sed -i "s/versionCode 1/versionCode 2/; s/versionName '1.0-native'/versionName '1.1-native-custom-icon'/" RafiqShoppingNative/app/build.gradle
+          cat > "$RES/mipmap-anydpi-v26/ic_rafiq_basket.xml" <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@android:color/black" />
+              <foreground android:drawable="@drawable/ic_rafiq_basket_foreground" />
+          </adaptive-icon>
+          XML
+          cat > "$RES/mipmap-anydpi-v26/ic_rafiq_basket_round.xml" <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@android:color/black" />
+              <foreground android:drawable="@drawable/ic_rafiq_basket_foreground" />
+          </adaptive-icon>
+          XML
+          cat > "$RES/mipmap-anydpi/ic_rafiq_basket.xml" <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <inset xmlns:android="http://schemas.android.com/apk/res/android"
+              android:drawable="@drawable/ic_rafiq_basket_foreground"
+              android:inset="0dp" />
+          XML
+          cat > "$RES/mipmap-anydpi/ic_rafiq_basket_round.xml" <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <inset xmlns:android="http://schemas.android.com/apk/res/android"
+              android:drawable="@drawable/ic_rafiq_basket_foreground"
+              android:inset="0dp" />
+          XML
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('RafiqShoppingNative/app/src/main/AndroidManifest.xml')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/ic_rafiq_basket"')
+          s = s.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@mipmap/ic_rafiq_basket_round"')
+          p.write_text(s, encoding='utf-8')
+          g = Path('RafiqShoppingNative/app/build.gradle')
+          t = g.read_text(encoding='utf-8')
+          t = t.replace('versionCode 1', 'versionCode 3')
+          t = t.replace("versionName '1.0-native'", "versionName '1.2-native-definitive-icon'")
+          g.write_text(t, encoding='utf-8')
+          PY
+
       - name: Align scanner dependencies
         run: |
           cat >> RafiqShoppingNative/app/build.gradle <<'GRADLE'
@@ -52,32 +93,38 @@ jobs:
               exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
           }
           GRADLE
-      - name: Verify native-only Android project
+
+      - name: Verify new icon wiring and native-only project
         run: |
           test -z "$(find RafiqShoppingNative -iname '*.html' -print -quit)"
           ! grep -R "WebView\|android.webkit" RafiqShoppingNative/app/src/main
-          test -f RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-          test -f RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-          test -s RafiqShoppingNative/app/src/main/res/drawable-nodpi/ic_launcher_basket_foreground.png
-          grep -q "journeyapps" RafiqShoppingNative/app/build.gradle
+          grep -q '@mipmap/ic_rafiq_basket' RafiqShoppingNative/app/src/main/AndroidManifest.xml
+          grep -q '@mipmap/ic_rafiq_basket_round' RafiqShoppingNative/app/src/main/AndroidManifest.xml
+          grep -q 'ic_rafiq_basket_foreground' RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_rafiq_basket.xml
+          test -s RafiqShoppingNative/app/src/main/res/drawable-nodpi/ic_rafiq_basket_foreground.png
+          grep -q 'journeyapps' RafiqShoppingNative/app/build.gradle
+
       - name: Build APK
         shell: bash
         run: |
           set -o pipefail
           gradle -p RafiqShoppingNative --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee rafiq-build.log
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Rafiq-Shopping-Build-Log-v1.1
+          name: Rafiq-Shopping-Build-Log-v1.2
           path: rafiq-build.log
           if-no-files-found: ignore
           retention-days: 3
+
       - name: Package APK
-        run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.1-Custom-Icon.apk
+        run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.2-Definitive-Icon.apk
+
       - uses: actions/upload-artifact@v4
         with:
-          name: Rafiq-Shopping-Native-Java-v1.1-APK
-          path: Rafiq-Shopping-Native-Java-v1.1-Custom-Icon.apk
+          name: Rafiq-Shopping-Native-Java-v1.2-APK
+          path: Rafiq-Shopping-Native-Java-v1.2-Definitive-Icon.apk
           if-no-files-found: error
           retention-days: 30
