@@ -32,54 +32,46 @@ jobs:
           echo "b0ac0c46fe3ade70741ef07b52f877a8bcd45a61cea66d59d9793a7a34e5bb67  /tmp/RafiqShoppingNative.tar.gz" | sha256sum -c -
           tar -xzf /tmp/RafiqShoppingNative.tar.gz
 
-      - name: Install definitive launcher icon v1.2
+      - name: Install full safe launcher icon v1.3
         run: |
-          base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-basket.png
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick
+          base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-source.png
+          magick /tmp/rafiq-source.png -resize 54% -gravity center -background black -extent 512x512 /tmp/rafiq-safe.png
           RES=RafiqShoppingNative/app/src/main/res
-          mkdir -p "$RES/drawable-nodpi" "$RES/mipmap-anydpi-v26" "$RES/mipmap-anydpi"
-          cp /tmp/rafiq-basket.png "$RES/drawable-nodpi/ic_rafiq_basket_foreground.png"
+          mkdir -p "$RES/drawable-nodpi" "$RES/mipmap-anydpi-v26"
+          cp /tmp/rafiq-safe.png "$RES/drawable-nodpi/ic_rafiq_basket_full_foreground.png"
           for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             mkdir -p "$RES/mipmap-$dpi"
-            cp /tmp/rafiq-basket.png "$RES/mipmap-$dpi/ic_rafiq_basket.png"
-            cp /tmp/rafiq-basket.png "$RES/mipmap-$dpi/ic_rafiq_basket_round.png"
+            cp /tmp/rafiq-safe.png "$RES/mipmap-$dpi/ic_rafiq_basket_full.png"
+            cp /tmp/rafiq-safe.png "$RES/mipmap-$dpi/ic_rafiq_basket_full_round.png"
           done
-          cat > "$RES/mipmap-anydpi-v26/ic_rafiq_basket.xml" <<'XML'
+          cat > "$RES/mipmap-anydpi-v26/ic_rafiq_basket_full.xml" <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
               <background android:drawable="@android:color/black" />
-              <foreground android:drawable="@drawable/ic_rafiq_basket_foreground" />
+              <foreground android:drawable="@drawable/ic_rafiq_basket_full_foreground" />
           </adaptive-icon>
           XML
-          cat > "$RES/mipmap-anydpi-v26/ic_rafiq_basket_round.xml" <<'XML'
+          cat > "$RES/mipmap-anydpi-v26/ic_rafiq_basket_full_round.xml" <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
               <background android:drawable="@android:color/black" />
-              <foreground android:drawable="@drawable/ic_rafiq_basket_foreground" />
+              <foreground android:drawable="@drawable/ic_rafiq_basket_full_foreground" />
           </adaptive-icon>
-          XML
-          cat > "$RES/mipmap-anydpi/ic_rafiq_basket.xml" <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <inset xmlns:android="http://schemas.android.com/apk/res/android"
-              android:drawable="@drawable/ic_rafiq_basket_foreground"
-              android:inset="0dp" />
-          XML
-          cat > "$RES/mipmap-anydpi/ic_rafiq_basket_round.xml" <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <inset xmlns:android="http://schemas.android.com/apk/res/android"
-              android:drawable="@drawable/ic_rafiq_basket_foreground"
-              android:inset="0dp" />
           XML
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('RafiqShoppingNative/app/src/main/AndroidManifest.xml')
           s = p.read_text(encoding='utf-8')
-          s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/ic_rafiq_basket"')
-          s = s.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@mipmap/ic_rafiq_basket_round"')
+          s = re.sub(r'android:icon="@mipmap/[^"]+"', 'android:icon="@mipmap/ic_rafiq_basket_full"', s)
+          s = re.sub(r'android:roundIcon="@mipmap/[^"]+"', 'android:roundIcon="@mipmap/ic_rafiq_basket_full_round"', s)
           p.write_text(s, encoding='utf-8')
           g = Path('RafiqShoppingNative/app/build.gradle')
           t = g.read_text(encoding='utf-8')
-          t = t.replace('versionCode 1', 'versionCode 3')
-          t = t.replace("versionName '1.0-native'", "versionName '1.2-native-definitive-icon'")
+          t = re.sub(r'versionCode\s+\d+', 'versionCode 4', t)
+          t = re.sub(r"versionName\s+'[^']+'", "versionName '1.3-native-full-icon'", t)
           g.write_text(t, encoding='utf-8')
           PY
 
@@ -94,14 +86,13 @@ jobs:
           }
           GRADLE
 
-      - name: Verify new icon wiring and native-only project
+      - name: Verify icon in project and native-only app
         run: |
           test -z "$(find RafiqShoppingNative -iname '*.html' -print -quit)"
           ! grep -R "WebView\|android.webkit" RafiqShoppingNative/app/src/main
-          grep -q '@mipmap/ic_rafiq_basket' RafiqShoppingNative/app/src/main/AndroidManifest.xml
-          grep -q '@mipmap/ic_rafiq_basket_round' RafiqShoppingNative/app/src/main/AndroidManifest.xml
-          grep -q 'ic_rafiq_basket_foreground' RafiqShoppingNative/app/src/main/res/mipmap-anydpi-v26/ic_rafiq_basket.xml
-          test -s RafiqShoppingNative/app/src/main/res/drawable-nodpi/ic_rafiq_basket_foreground.png
+          grep -q '@mipmap/ic_rafiq_basket_full' RafiqShoppingNative/app/src/main/AndroidManifest.xml
+          grep -q '@mipmap/ic_rafiq_basket_full_round' RafiqShoppingNative/app/src/main/AndroidManifest.xml
+          test -s RafiqShoppingNative/app/src/main/res/drawable-nodpi/ic_rafiq_basket_full_foreground.png
           grep -q 'journeyapps' RafiqShoppingNative/app/build.gradle
 
       - name: Build APK
@@ -110,21 +101,27 @@ jobs:
           set -o pipefail
           gradle -p RafiqShoppingNative --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee rafiq-build.log
 
+      - name: Verify icon inside APK
+        run: |
+          APK=RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk
+          unzip -l "$APK" | grep -q 'res/.*ic_rafiq_basket_full'
+          test -s "$APK"
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Rafiq-Shopping-Build-Log-v1.2
+          name: Rafiq-Shopping-Build-Log-v1.3
           path: rafiq-build.log
           if-no-files-found: ignore
           retention-days: 3
 
       - name: Package APK
-        run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.2-Definitive-Icon.apk
+        run: cp RafiqShoppingNative/app/build/outputs/apk/debug/app-debug.apk Rafiq-Shopping-Native-Java-v1.3-Full-Icon.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Rafiq-Shopping-Native-Java-v1.2-APK
-          path: Rafiq-Shopping-Native-Java-v1.2-Definitive-Icon.apk
+          name: Rafiq-Shopping-Native-Java-v1.3-APK
+          path: Rafiq-Shopping-Native-Java-v1.3-Full-Icon.apk
           if-no-files-found: error
           retention-days: 30
