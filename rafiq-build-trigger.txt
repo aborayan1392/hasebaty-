@@ -1,1 +1,1 @@
-Trigger native Android build with the user-provided shopping basket launcher icon, direct-density method.
+Trigger native Android build v1.2 with definitive manifest and adaptive icon resource references.
