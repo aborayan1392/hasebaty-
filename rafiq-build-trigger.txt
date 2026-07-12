@@ -1,1 +1,1 @@
-Trigger native Android build after workflow installation.
+Trigger native Android build with the user-provided shopping basket launcher icon.
