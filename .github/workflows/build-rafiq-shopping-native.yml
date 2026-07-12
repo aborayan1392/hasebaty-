@@ -35,9 +35,17 @@ jobs:
       - name: Install full safe launcher icon v1.3
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq imagemagick
+          sudo apt-get install -y -qq python3-pil
           base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-source.png
-          magick /tmp/rafiq-source.png -resize 54% -gravity center -background black -extent 512x512 /tmp/rafiq-safe.png
+          python3 - <<'PY'
+          from PIL import Image
+          src = Image.open('/tmp/rafiq-source.png').convert('RGB')
+          canvas = Image.new('RGB', (512, 512), 'black')
+          target = int(512 * 0.54)
+          src = src.resize((target, target), Image.Resampling.LANCZOS)
+          canvas.paste(src, ((512-target)//2, (512-target)//2))
+          canvas.save('/tmp/rafiq-safe.png', optimize=True)
+          PY
           RES=RafiqShoppingNative/app/src/main/res
           mkdir -p "$RES/drawable-nodpi" "$RES/mipmap-anydpi-v26"
           cp /tmp/rafiq-safe.png "$RES/drawable-nodpi/ic_rafiq_basket_full_foreground.png"
