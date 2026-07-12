@@ -1,1 +1,1 @@
-Trigger native Android build v1.2 after syncing the definitive icon workflow with main.
+Trigger native Android build v1.3 with a full safe-zone icon for APK preview, installer, and installed launcher.
