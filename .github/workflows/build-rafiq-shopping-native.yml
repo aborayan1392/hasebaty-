@@ -32,17 +32,14 @@ jobs:
           tar -xzf /tmp/RafiqShoppingNative.tar.gz
       - name: Install custom launcher icon
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq imagemagick
           base64 --decode rafiq-icon-v1.1.b64 > /tmp/rafiq-icon.png
           RES=RafiqShoppingNative/app/src/main/res
           mkdir -p "$RES/drawable-nodpi"
           cp /tmp/rafiq-icon.png "$RES/drawable-nodpi/ic_launcher_basket_foreground.png"
-          for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            dpi="${pair%%:*}"; size="${pair##*:}"
+          for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             mkdir -p "$RES/mipmap-$dpi"
-            convert -size ${size}x${size} xc:black /tmp/rafiq-icon.png -resize $((size*78/100))x$((size*78/100)) -gravity center -composite "$RES/mipmap-$dpi/ic_launcher.png"
-            cp "$RES/mipmap-$dpi/ic_launcher.png" "$RES/mipmap-$dpi/ic_launcher_round.png"
+            cp /tmp/rafiq-icon.png "$RES/mipmap-$dpi/ic_launcher.png"
+            cp /tmp/rafiq-icon.png "$RES/mipmap-$dpi/ic_launcher_round.png"
           done
           sed -i "s/versionCode 1/versionCode 2/; s/versionName '1.0-native'/versionName '1.1-native-custom-icon'/" RafiqShoppingNative/app/build.gradle
       - name: Align scanner dependencies
